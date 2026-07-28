@@ -213,4 +213,4 @@
   Chess.hasAnyLegalMove = hasAnyLegalMove;
   Chess.algebraicOf = algebraicOf;
 
-})(window.Chess);
+})(window.LocalChessEngine);

@@ -3,7 +3,7 @@
 // and the direction vectors sliding/stepping pieces use.
 // No game rules live here on purpose - rules.js owns "is this move legal".
 
-window.Chess = window.Chess || {};
+window.LocalChessEngine = window.LocalChessEngine || {};
 
 (function(Chess){
   "use strict";
@@ -58,4 +58,4 @@ window.Chess = window.Chess || {};
     return null;
   };
 
-})(window.Chess);
+})(window.LocalChessEngine);
