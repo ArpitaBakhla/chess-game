@@ -47,6 +47,7 @@
         <button class="btn primary" id="newGameBtn">New game</button>
         <button class="btn" id="undoBtn">Undo</button>
         <button class="btn" id="flipBtn">Flip board</button>
+        <button class="btn danger" id="resignBtn" style="display: none;">Resign</button>
       </div>
     </div>
 
@@ -104,15 +105,15 @@
       </div>
 
       <div>
-        <h2>Move log</h2>
-        <div class="history"><ol id="historyList"></ol></div>
+        <h2>Move Log</h2>
+        <div class="history">
+          <table class="history-table">
+            <tbody id="historyTableBody"></tbody>
+          </table>
+        </div>
       </div>
-
-      <div class="hint">Click a piece to see its legal moves highlighted, then click a destination square. Castling, en passant and promotion are all handled automatically.</div>
     </div>
   </div>
-
-  <footer class="credit">built with HTML · CSS · vanilla JavaScript — powered by chess.js & PeerJS</footer>
 </div>
 
 <!-- Pawn Promotion Modal -->

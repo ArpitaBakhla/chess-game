@@ -38,7 +38,7 @@
   const turnLabel = document.getElementById('turnLabel');
   const turnDot = document.getElementById('turnDot');
   const statusMsg = document.getElementById('statusMsg');
-  const historyList = document.getElementById('historyList');
+  const historyTableBody = document.getElementById('historyTableBody');
   const capByWhiteEl = document.getElementById('capByWhite');
   const capByBlackEl = document.getElementById('capByBlack');
   const promoBackdrop = document.getElementById('promoBackdrop');
@@ -61,6 +61,11 @@
   const roomLinkVal = document.getElementById('roomLinkVal');
   const copyLinkBtn = document.getElementById('copyLinkBtn');
   
+  // Controls
+  const undoBtn = document.getElementById('undoBtn');
+  const flipBtn = document.getElementById('flipBtn');
+  const resignBtn = document.getElementById('resignBtn');
+  
   let pendingPromotion = null;
 
   // Constants
@@ -68,6 +73,101 @@
   const GLYPH = {
     w: { k: '♔', q: '♕', r: '♖', b: '♗', n: '♘', p: '♙' },
     b: { k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟' }
+  };
+
+  // Web Audio Synthesizer for Chess.com Chess Sounds
+  const ChessSound = {
+    ctx: null,
+
+    init() {
+      if (!this.ctx) {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    },
+
+    play(type) {
+      this.init();
+      if (!this.ctx) return;
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+      
+      const now = this.ctx.currentTime;
+      
+      if (type === 'move') {
+        // Satisfying wooden knock sound
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } 
+      else if (type === 'capture') {
+        // Sharp capture click
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(350, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } 
+      else if (type === 'check') {
+        // Dual tone high-pitch alert
+        const playBeep = (freq, start, duration) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.2, start);
+          gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
+
+          osc.start(start);
+          osc.stop(start + duration);
+        };
+        playBeep(290, now, 0.08);
+        playBeep(290, now + 0.08, 0.12);
+      } 
+      else if (type === 'gameover') {
+        // Chime falling chord
+        const playNote = (freq, start, duration) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.15, start);
+          gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
+
+          osc.start(start);
+          osc.stop(start + duration);
+        };
+        playNote(220, now, 0.25);
+        playNote(261.63, now + 0.1, 0.25);
+        playNote(329.63, now + 0.2, 0.35);
+      }
+    }
   };
 
   // Coords & Algebraic conversion helper
@@ -126,12 +226,15 @@
       }
     }
 
+    ChessSound.play('gameover');
     showGameOverModal("Timeout!", `${winner} wins on time.`);
   }
 
   // Move Logic
   function performMove(from, to, promotion) {
-    // Check if it is a promotion but we haven't selected a piece yet
+    // Initialize sound synthesis on user click gesture
+    ChessSound.init();
+
     if (!promotion) {
       const moves = game.moves({ square: from, verbose: true });
       const isPromo = moves.some(m => m.to === to && m.flags.includes('p'));
@@ -142,10 +245,12 @@
       }
     }
 
+    const isCapture = game.get(to) !== null || (game.get(from) && game.get(from).type === 'p' && from[0] !== to[0] && game.get(to) === null);
+
     const moveResult = game.move({ from, to, promotion: promotion || 'q' });
     if (!moveResult) return;
 
-    // Send move to peer if online and it is our turn
+    // Send move to peer if online
     if (gameMode === 'online' && game.turn() !== myColor) {
       if (conn && conn.open) {
         conn.send({
@@ -155,6 +260,15 @@
           promotion: promotion
         });
       }
+    }
+
+    // Play sounds
+    if (game.in_check()) {
+      ChessSound.play('check');
+    } else if (isCapture) {
+      ChessSound.play('capture');
+    } else {
+      ChessSound.play('move');
     }
 
     // Update coordinates for last move highlights
@@ -360,17 +474,32 @@
   }
 
   function renderHistory(){
-    historyList.innerHTML = '';
+    historyTableBody.innerHTML = '';
     const history = game.history();
+    
     for(let i=0; i<history.length; i+=2){
-      const li = document.createElement('li');
-      li.className = 'pair';
-      const w = history[i] || '';
-      const bMove = history[i+1] || '';
-      li.innerHTML = `<span>${w}</span><span>${bMove}</span>`;
-      historyList.appendChild(li);
+      const tr = document.createElement('tr');
+      
+      const moveNumTd = document.createElement('td');
+      moveNumTd.className = 'move-num';
+      moveNumTd.textContent = `${Math.floor(i/2) + 1}.`;
+      tr.appendChild(moveNumTd);
+      
+      const whiteMoveTd = document.createElement('td');
+      whiteMoveTd.textContent = history[i] || '';
+      tr.appendChild(whiteMoveTd);
+      
+      const blackMoveTd = document.createElement('td');
+      blackMoveTd.textContent = history[i+1] || '';
+      tr.appendChild(blackMoveTd);
+      
+      historyTableBody.appendChild(tr);
     }
-    historyList.parentElement.scrollTop = historyList.parentElement.scrollHeight;
+    
+    const historyContainer = historyTableBody.closest('.history');
+    if (historyContainer) {
+      historyContainer.scrollTop = historyContainer.scrollHeight;
+    }
   }
 
   // Popups and Modals
@@ -406,6 +535,7 @@
         title = "Draw";
         message = "Draw by 50-move rule or agreement.";
       }
+      ChessSound.play('gameover');
       showGameOverModal(title, message);
       return true;
     }
@@ -545,6 +675,8 @@
         document.getElementById('gameModeTag').textContent = 'Online · Playing Black';
         startNewOnlineGame();
       } else if (data.type === 'move') {
+        const isCapture = game.get(data.to) !== null || (game.get(data.from) && game.get(data.from).type === 'p' && data.from[0] !== data.to[0] && game.get(data.to) === null);
+        
         game.move({
           from: data.from,
           to: data.to,
@@ -559,6 +691,15 @@
         selectedSquare = null;
         legalTargets = [];
 
+        // Play sound for opponent's move
+        if (game.in_check()) {
+          ChessSound.play('check');
+        } else if (isCapture) {
+          ChessSound.play('capture');
+        } else {
+          ChessSound.play('move');
+        }
+
         startTurnTimer();
 
         renderCaptured();
@@ -567,7 +708,12 @@
         renderHistory();
         checkGameOver();
       } else if (data.type === 'timeout') {
+        ChessSound.play('gameover');
         showGameOverModal("Timeout!", `${data.loser === 'White' ? 'Black' : 'White'} wins on time.`);
+      } else if (data.type === 'resign') {
+        const winner = data.player === 'w' ? 'Black' : 'White';
+        ChessSound.play('gameover');
+        showGameOverModal("Resignation", `Opponent resigned. ${winner} wins!`);
       } else if (data.type === 'restart') {
         startNewOnlineGame(false);
       }
@@ -590,6 +736,7 @@
     lobbyRoomDisplay.style.display = 'none';
 
     if (gameMode === 'online') {
+      ChessSound.play('gameover');
       showGameOverModal("Disconnected", "Opponent disconnected from the room.");
     }
 
@@ -597,7 +744,11 @@
     gameMode = 'local';
     myColor = null;
     document.getElementById('gameModeTag').textContent = 'two-player · local board';
-    document.getElementById('undoBtn').disabled = false;
+    
+    // Reset back controls to local view
+    undoBtn.style.display = 'block';
+    flipBtn.style.display = 'block';
+    resignBtn.style.display = 'none';
 
     if (timerInterval) clearInterval(timerInterval);
     document.getElementById('whiteTimer').classList.remove('active');
@@ -642,7 +793,11 @@
       gameMode = 'local';
       myColor = null;
       document.getElementById('gameModeTag').textContent = 'two-player · local board';
-      document.getElementById('undoBtn').disabled = false;
+      
+      // Update local buttons
+      undoBtn.style.display = 'block';
+      flipBtn.style.display = 'block';
+      resignBtn.style.display = 'none';
 
       resetLocalGame();
     } else {
@@ -651,7 +806,12 @@
       lobbyOnlineSection.style.display = 'flex';
 
       gameMode = 'online';
-      document.getElementById('undoBtn').disabled = true;
+      
+      // Update online buttons
+      undoBtn.style.display = 'none';
+      flipBtn.style.display = 'none';
+      resignBtn.style.display = 'block';
+
       initPeer();
     }
   }
@@ -714,10 +874,21 @@
     renderBoard();
   });
 
-  document.getElementById('undoBtn').addEventListener('click', () => {
+  resignBtn.addEventListener('click', () => {
+    if (gameMode !== 'online') return;
+    if (conn && conn.open) {
+      conn.send({ type: 'resign', player: myColor });
+    }
+    const loserColor = myColor === 'w' ? 'White' : 'Black';
+    const winnerColor = myColor === 'w' ? 'Black' : 'White';
+    ChessSound.play('gameover');
+    showGameOverModal("Resignation", `You resigned. ${winnerColor} wins!`);
+  });
+
+  undoBtn.addEventListener('click', () => {
     if (gameMode === 'online') return;
     
-    // Undo twice in local to undo the move pair, or once if only one move has been played
+    // Undo twice in local to undo the move pair
     game.undo();
     updateLastMoveFromHistory();
     
