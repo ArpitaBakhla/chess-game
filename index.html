@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Study Hall Chess</title>
     <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   </head>
   <body data-theme="classic">
     <div class="app-shell">
@@ -55,6 +56,26 @@
             <table class="history-table">
               <tbody id="historyBody"></tbody>
             </table>
+          </div>
+
+          <div class="card multiplayer-card">
+            <div class="card-head">
+              <h2>Real-time multiplayer</h2>
+              <span class="chip" id="connectionBadge">Offline</span>
+            </div>
+            <p class="muted" id="connectionStatus">Create or join a room to play live.</p>
+            <div class="multiplayer-actions">
+              <button class="btn primary" id="createRoomButton">Create room</button>
+              <button class="btn ghost" id="joinRoomButton">Join room</button>
+            </div>
+            <div class="form-row compact">
+              <label for="roomInput">Room ID</label>
+              <input id="roomInput" type="text" placeholder="Enter room ID" />
+            </div>
+            <div class="share-row">
+              <input id="roomLinkInput" type="text" readonly placeholder="Room link" />
+              <button class="btn ghost small" id="copyRoomButton">Copy</button>
+            </div>
           </div>
 
           <div class="card summary-card" id="summaryCard">

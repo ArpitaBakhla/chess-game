@@ -119,6 +119,24 @@ header h1 span { color: var(--accent); }
 .coord-file { bottom: 4px; right: 6px; }
 
 .controls { display: flex; flex-wrap: wrap; gap: 10px; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.08);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.chip.online { background: rgba(52, 211, 153, 0.16); color: #bbf7d0; }
+.chip.loading { background: rgba(250, 204, 21, 0.16); color: #fde68a; }
+.chip.error { background: rgba(251, 113, 133, 0.2); color: #fecdd3; }
+.multiplayer-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.share-row { display: flex; gap: 8px; }
+.share-row input { flex: 1; }
+.form-row.compact { margin-bottom: 8px; }
 .btn {
   border: 0;
   border-radius: 999px;
@@ -140,6 +158,8 @@ header h1 span { color: var(--accent); }
 .history-table tr:last-child td { border-bottom: 0; }
 .summary-card { display: none; }
 .summary-card.show { display: block; }
+.status { color: var(--text); }
+.status.check { color: var(--danger); }
 
 .overlay {
   position: fixed;
