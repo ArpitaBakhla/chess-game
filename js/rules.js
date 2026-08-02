@@ -44,7 +44,7 @@
         const nr=r+dr, nc=c+dc;
         if(!Chess.inBounds(nr,nc)) continue;
         const target = board[nr][nc];
-        if(!target || target.color === enemy){
+        if(!target || target.color === enemy || target.type === 'K'){
           moves.push({r:nr, c:nc, capture: !!target});
         }
       }

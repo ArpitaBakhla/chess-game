@@ -1,0 +1,11 @@
+{
+  "name": "chess-game",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "jsdom": "^24.1.0"
+  }
+}
